@@ -83,7 +83,7 @@ def main(args):
     assert (all_args.share_policy == True and all_args.scenario_name == 'simple_speaker_listener') == False, (
         "The simple_speaker_listener scenario can not use shared policy. Please check the config.py.")
 
-    # cuda配置
+    # cuda的配置
     if all_args.cuda and torch.cuda.is_available():
         print("choose to use gpu...")
         device = torch.device("cuda:0")
