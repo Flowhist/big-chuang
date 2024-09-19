@@ -1,0 +1,5 @@
+https://zhuanlan.zhihu.com/p/555515701
+https://github.com/openai/multiagent-particle-envs
+https://github.com/shaoanlu/CBF_QP_safety_filter
+https://blog.csdn.net/weixin_43903639/article/details/135333890
+https://blog.csdn.net/u010038790/article/details/109242189
