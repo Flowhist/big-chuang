@@ -19,11 +19,11 @@ class MPERunner(Runner):
         self.warmup()   
         # start为当前时间戳(秒钟)
         start = time.time()
-        # episodes = 10^7 / 200 / 32 = 1500
+        # episodes = 5e7 / 300 / 32 = 5208
         episodes = int(self.num_env_steps) // self.episode_length // self.n_rollout_threads
-        for episode in range(episodes):
+        for epi in range(episodes):
             if self.use_linear_lr_decay:  # False
-                self.trainer.policy.lr_decay(episode, episodes)
+                self.trainer.policy.lr_decay(epi, episodes)
             for step in range(self.episode_length):
                 # 从策略网络采样得到下一步动作
                 values, actions, action_log_probs, rnn_states, rnn_states_critic, actions_env = self.collect(step)
@@ -36,22 +36,14 @@ class MPERunner(Runner):
             self.compute()
             train_infos = self.train()
             # 当前运行步数
-            total_num_steps = (episode + 1) * self.episode_length * self.n_rollout_threads
+            total_num_steps = (epi + 1) * self.episode_length * self.n_rollout_threads
             # 保存模型
-            if episode % self.save_interval == 0 or episode == episodes - 1:
+            if epi % self.save_interval == 0 or epi == episodes - 1:
                 self.save()
-            # 记录信息
-            if episode % self.log_interval == 0:
+            # 每两回合记录一次
+            if epi % self.log_interval == 0:
                 end = time.time()
-                print("\n Scenario {} Algo {} Exp {} updates {}/{} episodes, total num timesteps {}/{}, FPS {}.\n"
-                        .format(self.all_args.scenario_name,
-                                self.algorithm_name,
-                                self.experiment_name,
-                                episode,
-                                episodes,
-                                total_num_steps,
-                                self.num_env_steps,
-                                int(total_num_steps / (end - start))))
+                print("\n updates {}/{} episodes\n".format(epi, episodes))
                 if self.env_name == "MPE":
                     env_infos = {}
                     for agent_id in range(self.num_agents):
@@ -66,9 +58,8 @@ class MPERunner(Runner):
                 self.log_train(train_infos, total_num_steps)
                 self.log_env(env_infos, total_num_steps)
             # 评估环境
-            if episode % self.eval_interval == 0 and self.use_eval:
-                self.eval(total_num_steps)
-            # self.render()
+            # if epi % self.eval_interval == 0 and self.use_eval:
+            #     self.eval(total_num_steps)
 
     def warmup(self):
         # reset env
@@ -88,11 +79,13 @@ class MPERunner(Runner):
     def collect(self, step):
         self.trainer.prep_rollout()
         value, action, action_log_prob, rnn_states, rnn_states_critic \
-            = self.trainer.policy.get_actions(np.concatenate(self.buffer.share_obs[step]),
+            = self.trainer.policy.get_actions(
+                            np.concatenate(self.buffer.share_obs[step]),
                             np.concatenate(self.buffer.obs[step]),
                             np.concatenate(self.buffer.rnn_states[step]),
                             np.concatenate(self.buffer.rnn_states_critic[step]),
-                            np.concatenate(self.buffer.masks[step]))
+                            np.concatenate(self.buffer.masks[step])
+                            )
         # [self.envs, agents, dim]
         values = np.array(np.split(_t2n(value), self.n_rollout_threads))
         actions = np.array(np.split(_t2n(action), self.n_rollout_threads))
@@ -179,7 +172,7 @@ class MPERunner(Runner):
         """Visualize the env."""
         envs = self.envs
         all_frames = []
-        for episode in range(self.all_args.render_episodes):
+        for epi in range(self.all_args.render_episodes):
             obs = envs.reset()
             if self.all_args.save_gifs:
                 image = envs.render('rgb_array')[0][0]

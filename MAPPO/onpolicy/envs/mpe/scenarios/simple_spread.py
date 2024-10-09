@@ -63,22 +63,41 @@ class Scenario(BaseScenario):
             landmark.color = np.array([0.75, 0.75, 0.75])
 
         # 以下是位置生成(纯随机)
-        for agent in world.agents:
-            agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
-            agent.state.p_vel = np.zeros(world.dim_p)
-            agent.state.c = np.zeros(world.dim_c)
+        for i, agent in enumerate(world.agents):
+            if i == 0:
+                agent.state.p_pos = np.array([-0.75,-0.75])
+                agent.state.p_vel = np.zeros(world.dim_p)
+                agent.state.c = np.zeros(world.dim_c)
+            if i == 1:
+                agent.state.p_pos = np.array([0.75,0.75])
+                agent.state.p_vel = np.zeros(world.dim_p)
+                agent.state.c = np.zeros(world.dim_c)
         for i, landmark in enumerate(world.landmarks):
-            landmark.state.p_pos = 0.8 * np.random.uniform(-1, +1, world.dim_p)
-            landmark.state.p_vel = np.zeros(world.dim_p)
+            if i == 0:
+                landmark.state.p_pos = np.array([-0.45,-0.45])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+                landmark.state.c = np.zeros(world.dim_c)
+            if i == 1:
+                landmark.state.p_pos = np.array([-0.45,0.35])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+                landmark.state.c = np.zeros(world.dim_c)
+            if i == 2:
+                landmark.state.p_pos = np.array([0.35,-0.35])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+                landmark.state.c = np.zeros(world.dim_c)
+            if i == 3:
+                landmark.state.p_pos = np.array([0.45,0.55])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+                landmark.state.c = np.zeros(world.dim_c)
         for i, terminal in enumerate(world.terminals):
             for j, agent in enumerate(world.agents):
                 if i == 0:
-                    terminal.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
+                    terminal.state.p_pos = np.array([0.9,0.9])
                     terminal.state.p_vel = np.zeros(world.dim_p)
                     if j == i:
                         agent.goal = terminal.state.p_pos
                 if i == 1:
-                    terminal.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
+                    terminal.state.p_pos = np.array([-0.9,-0.9])
                     terminal.state.p_vel = np.zeros(world.dim_p)
                     if j == i:
                         agent.goal = terminal.state.p_pos
@@ -147,27 +166,39 @@ class Scenario(BaseScenario):
                 delta_pos = agent.state.p_pos - entity.state.p_pos
                 dist = np.sqrt(np.sum(np.square(delta_pos)))
                 dist_min = agent.size + entity.size
-                return True if dist < dist_min else False
+                return True if dist < 1.75 * dist_min else False
 
     def reward(self, agent, world):
-        # Agents are rewarded based on minimum agent distance to each landmark, penalized for collisions
         rew = 0
-        # 对每个landmark和movmark，计算所有agent到该landmark的距离最小值加入到rew中
-        for l in world.landmarks:
-            dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos)))
-                     for a in world.agents]
-            rew -= min(dists)
-        for m in world.movmarks:
-            dists = [np.sqrt(np.sum(np.square(a.state.p_pos - m.state.p_pos)))
-                     for a in world.agents]
-            rew -= min(dists)
-        if agent.collide:
-            for a in world.agents:
-                if self.is_collision(agent, world):
-                    rew -= 20000
+        max_dist = 2.5
+        pre_dist = 0.15
+        goal_reached_threshold = 0.02
+
+        # 计算 agent 到所有障碍物的最小欧几里得距离，距离越远，奖励越多
+        # dist = min(np.sqrt(np.sum(np.square(agent.state.p_pos - m.state.p_pos))) for m in world.marks)
+        # if dist < pre_dist:
+        #     rew += 0.01 * dist
+
+        # 碰撞惩罚
+        if self.is_collision(agent, world):
+            rew -= 10
+
+        # 一定范围内逐步奖励
         dist_to_goal = np.sqrt(np.sum(np.square(agent.state.p_pos - agent.goal)))
-        if dist_to_goal <= 1.8:
-            rew += 15000 - 7000 * dist_to_goal
+        # if dist_to_goal <= max_dist:
+        #     rew += np.exp(-0.5 * dist_to_goal)
+        
+        # 如果当前距离比之前小，则给予奖励；反之，给予惩罚
+        if agent.prev_dist_to_goal is not None and dist_to_goal < agent.prev_dist_to_goal:
+            rew += 1
+        else:
+            rew -= 1
+        agent.prev_dist_to_goal = dist_to_goal
+        
+        # 额外的目标达成奖励        
+        if dist_to_goal < goal_reached_threshold:
+            rew += 10
+
         return rew
 
     def observation(self, agent, world):

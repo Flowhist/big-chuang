@@ -28,6 +28,15 @@ class R_MAPPOPolicy:
         self.actor = R_Actor(args, self.obs_space, self.act_space, self.device)
         self.critic = R_Critic(args, self.share_obs_space, self.device)
 
+        # 多张GPU同时训练
+        if torch.cuda.device_count() > 1:
+            self.actor = torch.nn.DataParallel(self.actor)
+            self.critic = torch.nn.DataParallel(self.critic)
+
+        # 移动到指定device上
+        self.actor.to(self.device)
+        self.critic.to(self.device)
+
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
                                                 lr=self.lr, eps=self.opti_eps,
                                                 weight_decay=self.weight_decay)

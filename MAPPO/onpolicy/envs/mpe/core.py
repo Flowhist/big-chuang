@@ -130,6 +130,8 @@ class Agent(Entity):
         self.u_noise = None
         # communication noise amount
         self.c_noise = None
+        # 上一时刻与目的地距离
+        self.prev_dist_to_goal = None
         # control range
         self.u_range = 1.0
         # state(包含位置p_pos[x,y]和速度p_vel[vx,vy])
@@ -365,6 +367,11 @@ class World(object):
     @property
     def entities(self):
         return self.agents + self.landmarks + self.terminals + self.movmarks
+    
+    # 返回所有障碍物
+    @property
+    def marks(self):
+        return self.landmarks + self.movmarks
 
     # return all agents controllable by external policies
     @property
@@ -382,7 +389,7 @@ class World(object):
             self.cached_dist_vect = np.zeros((len(self.entities),
                                               len(self.entities),
                                               self.dim_p))
-            # calculate minimum distance for a collision between all entities （size相加�?
+            # calculate minimum distance for a collision between all entities (size相加)
             self.min_dists = np.zeros((len(self.entities), len(self.entities)))
             for ia, entity_a in enumerate(self.entities):
                 for ib in range(ia + 1, len(self.entities)):
